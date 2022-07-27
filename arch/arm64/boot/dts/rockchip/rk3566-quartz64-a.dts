@@ -30,7 +30,7 @@
 //		bootargs = "earlycon=uart8250,mmio32,0xfe660000 console=ttyFIQ0 root=PARTLABEL=rootfs rootfstype=ext4 rw rootwait overlayroot=device:dev=PARTLABEL=userdata,fstype=ext4,mkfs=1";
 //	};
 //	chosen: chosen {
-//		bootargs = "earlycon=uart8250,mmio32,0xfe660000 console=ttyFIQ0";
+//		bootargs = "earlycon=uart8250,mmio32,0xfe660000 console=ttyFIQ0 coherent_pool=1m";
 //
 
 	aliases {
@@ -39,13 +39,16 @@
 		mmc2 = &sdhci;
 	};
 
-//	fan: pwm-fan {
-//		compatible = "pwm-fan";
-//		cooling-levels = <0 18 102 170 255>;
-//		#cooling-cells = <2>;
-//		fan-supply = <&vcc5v0_sysp>;
-//		pwms = <&pwm0 0 50000 0>;
-//	};
+	fan: gpio_fan {
+		compatible = "gpio-fan";
+		gpios = <&gpio0 RK_PD5 GPIO_ACTIVE_HIGH>;
+		gpio-fan,speed-map = <0    0
+				      4500 1>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&fan_en_h>;
+		#cooling-cells = <2>;
+	};
+
 
 	vcc12v_dcin: vcc12v_dcin {
 		compatible = "regulator-fixed";
@@ -163,25 +166,25 @@
 		status = "okay";
 	};
 
-	adc_keys: adc-keys {
-		compatible = "adc-keys";
-		io-channels = <&saradc 0>;
-		io-channel-names = "buttons";
-		keyup-threshold-microvolt = <1800000>;
-		poll-interval = <100>;
-
-		vol-up-key {
-			label = "volume up";
-			linux,code = <KEY_VOLUMEUP>;
-			press-threshold-microvolt = <1750>;
-		};
-
-		vol-down-key {
-			label = "volume down";
-			linux,code = <KEY_VOLUMEDOWN>;
-			press-threshold-microvolt = <297500>;
-		};
-	};
+//	adc_keys: adc-keys {
+//		compatible = "adc-keys";
+//		io-channels = <&saradc 0>;
+//		io-channel-names = "buttons";
+//		keyup-threshold-microvolt = <1800000>;
+//		poll-interval = <100>;
+//
+//		vol-up-key {
+//			label = "volume up";
+//			linux,code = <KEY_VOLUMEUP>;
+//			press-threshold-microvolt = <1750>;
+//		};
+//
+//		vol-down-key {
+//			label = "volume down";
+//			linux,code = <KEY_VOLUMEDOWN>;
+//			press-threshold-microvolt = <297500>;
+//		};
+//	};
 
 	hdmi_sound: hdmi-sound {
 		compatible = "simple-audio-card";
@@ -306,7 +309,7 @@
 			retain-state-suspended;
 		};
 
-		led-diy {
+	led-diy {
 			label = "diy-led";
 			default-state = "on";
 			gpios = <&gpio0 RK_PD4 GPIO_ACTIVE_HIGH>;
@@ -314,6 +317,20 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&diy_led_enable_h>;
 			retain-state-suspended;
+		};
+	};
+	
+	reserved_memory: reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+		
+		rknpu_reserved: rknpu {
+			compatible = "shared-dma-pool";
+			inactive;
+			reusable;     
+			size = <0x0 0x20000000>;
+			alignment = <0x0 0x1000>;
 		};
 	};
 };
@@ -338,17 +355,17 @@
 
 
 &dfi {
-	status = "okay";
+	status = "disabled";
 };
 
-&display_subsystem {
-    status = "okay";
-};
+//&display_subsystem {
+//    status = "okay";
+//};
 
 &dmc {
 	//auto-freq-en = <0>;
 	center-supply = <&vdd_logic>;
-	status = "okay";
+	status = "disabled";
 };
 
 &gmac1 {
@@ -405,11 +422,6 @@
 	status = "okay";
 	connect = <&vp0_out_hdmi>;
 };
-
-&video_phy1 {
-	status = "disabled";
-};
-
 
 &i2c0 {
 	status = "okay";
@@ -927,6 +939,13 @@ status = "okay";
 			rockchip,pins = <0 RK_PD4 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
+	
+	fan {
+		fan_en_h: fan-en-h {
+			rockchip,pins = <0 RK_PD5 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+
 };
 
 &pmu_io_domains {
@@ -1051,18 +1070,6 @@ status = "okay";
 	status = "okay";
 };
 
-&rkisp {
-	status = "okay";
-};
-
-&rkisp_mmu {
-	status = "okay";
-};
-
-&rkisp_vir0 {
-	status = "disabled";
-};
-
 &rkvdec {
 	status = "okay";
 };
@@ -1081,13 +1088,13 @@ status = "okay";
 };
 
 &rknpu {
-	//memory-region = <&rknpu_reserved>;
+	memory-region = <&rknpu_reserved>;
 	rknpu-supply = <&vdd_gpu>;
 	status = "okay";
 };
 
 &rknpu_mmu {
-	status = "okay";
+	status = "disabled";
 };
 
 &rng {
@@ -1175,33 +1182,33 @@ status = "okay";
 	};
 };
 
-//&soc_thermal {
-//	trips {
-//		cpu_warm: cpu_warm {
-//			temperature = <55000>;
-//			hysteresis = <2000>;
-//			type = "active";
-//		};
-//
-//		cpu_hot: cpu_hot {
-//			temperature = <65000>;
-//			hysteresis = <2000>;
-//			type = "active";
-//		};
-//	};
-//
-//	cooling-maps {
-//		map2 {
-//			trip = <&cpu_warm>;
-//			cooling-device = <&fan THERMAL_NO_LIMIT 1>;
-//		};
-//
-//		map3 {
-//			trip = <&cpu_hot>;
-//			cooling-device = <&fan 2 THERMAL_NO_LIMIT>;
-//		};
-//	};
-//};
+&soc_thermal {
+	trips {
+		cpu_warm: cpu_warm {
+			temperature = <55000>;
+			hysteresis = <2000>;
+			type = "active";
+		};
+
+		cpu_hot: cpu_hot {
+			temperature = <65000>;
+			hysteresis = <2000>;
+			type = "active";
+		};
+	};
+
+	cooling-maps {
+		map2 {
+			trip = <&cpu_warm>;
+			cooling-device = <&fan THERMAL_NO_LIMIT 1>;
+		};
+
+		map3 {
+			trip = <&cpu_hot>;
+			cooling-device = <&fan 2 THERMAL_NO_LIMIT>;
+		};
+	};
+};
 
 &tsadc {
 	status = "okay";
@@ -1306,13 +1313,19 @@ status = "okay";
 	status = "okay";
 };
 
+&video_phy0 {
+	status = "disabled";
+};
+
+&video_phy1 {
+	status = "disabled";
+};
+
 &vop {
-	// disable-win-move;
-        //support-multi-area;
-        cursor-win-id = <ROCKCHIP_VOP2_CLUSTER0>;
+	status = "okay";
 	assigned-clocks = <&cru DCLK_VOP0>, <&cru DCLK_VOP1>;
 	assigned-clock-parents = <&pmucru PLL_HPLL>, <&cru PLL_VPLL>;
-	status = "okay";
+	support-multi-area;
 };
 
 &vop_mmu {
