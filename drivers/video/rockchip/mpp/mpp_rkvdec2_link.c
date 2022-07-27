@@ -103,7 +103,7 @@ static struct rkvdec_link_info rkvdec_link_v2_hw_info = {
 	},
 	.tb_reg_int = 164,
 };
-+
+
 static struct rkvdec_link_info rkvdec_link_ccu_hw_info = {
 	.tb_reg_num = 218,
 	.tb_reg_next = 0,
